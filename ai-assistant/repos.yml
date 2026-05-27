@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────
+#  repos.yml  —  Define every repo you want indexed
+#
+#  Two source types:
+#    local:  a path on the host machine (mounted into the container)
+#    remote: a git URL (will be cloned into repos_cache/)
+#
+#  auth for remote repos:
+#    none   — public repo, no auth needed
+#    token  — set the matching env var in docker-compose.yml
+#
+#  sync_interval_minutes overrides the global SYNC_INTERVAL_MINUTES
+#  per repo if you want some repos polled more/less often.
+# ─────────────────────────────────────────────────────────────
+
+global:
+  sync_interval_minutes: 15        # default poll interval
+  chunk_size: 400                  # tokens per chunk
+  chunk_overlap: 60
+
+# Files/dirs to always exclude (glob patterns)
+exclude:
+  - "**/*.lock"
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.git/**"
+  - "**/vendor/**"
+  - "**/__pycache__/**"
+  - "**/*.pyc"
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "**/coverage/**"
+  - "**/*.egg-info/**"
+
+repos:
+  # ── Local repos ──────────────────────────────────────────────
+  - name: my-backend
+    type: local
+    path: /app/data/repos/my-backend      # mount your repo dir in docker-compose
+    branch: main
+
+  # ── Remote repos (GitHub / GitLab / Gitea / Bitbucket) ───────
+  # - name: backend-api
+  #   type: remote
+  #   url: https://github.com/myorg/backend-api.git
+  #   branch: main
+  #   auth: token
+  #   token_env: GITHUB_TOKEN             # set this in docker-compose environment
+
+  # - name: frontend
+  #   type: remote
+  #   url: https://gitlab.mycompany.com/team/frontend.git
+  #   branch: develop
+  #   auth: token
+  #   token_env: GITLAB_TOKEN
+
+  # - name: infra-scripts
+  #   type: remote
+  #   url: https://gitea.internal/ops/scripts.git
+  #   branch: main
+  #   auth: token
+  #   token_env: GITEA_TOKEN
+  #   sync_interval_minutes: 5            # poll this one more often

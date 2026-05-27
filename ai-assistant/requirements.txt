@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+langchain
+langchain-community
+langchain-qdrant
+qdrant-client
+ollama
+redis
+pyyaml
+apscheduler
+gitpython
+python-multipart
+pypdf
+unstructured
+pydantic-settings

@@ -1,0 +1,92 @@
+services:
+
+  # ── Vector Database ────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Conversation Memory Store ──────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Main RAG API ───────────────────────────────────────────────
+  rag-api:
+    build: .
+    container_name: rag-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+      - ./repos.yml:/app/repos.yml
+      - ./repos_cache:/app/repos_cache      # cloned remote repos live here
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - EMBED_MODEL=nomic-embed-text
+      - LLM_MODEL=llama3
+      - CODE_COLLECTION=code_knowledge
+      - DOCS_COLLECTION=doc_knowledge
+      - CONVERSATION_TTL=86400           # seconds — 24 hrs
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ── Repo Sync Scheduler ────────────────────────────────────────
+  scheduler:
+    build: .
+    container_name: scheduler
+    command: python -m app.scheduler
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+      - ./repos.yml:/app/repos.yml
+      - ./repos_cache:/app/repos_cache
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - EMBED_MODEL=nomic-embed-text
+      - CODE_COLLECTION=code_knowledge
+      - SYNC_INTERVAL_MINUTES=15
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
